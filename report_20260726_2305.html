@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FB 社團爬蟲報告</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #1c1e21;
+    line-height: 1.6;
+  }
+  .header {
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  .header-inner {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1877f2;
+  }
+  .header h1 .timestamp {
+    font-weight: 400;
+    font-size: 14px;
+    color: #65676b;
+  }
+  .header .post-count {
+    font-size: 14px;
+    color: #65676b;
+  }
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .card-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 16px 12px;
+    gap: 12px;
+  }
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #1877f2;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .author-info .author-name {
+    font-weight: 600;
+    font-size: 15px;
+    color: #050505;
+  }
+  .author-info .post-time {
+    font-size: 13px;
+    color: #65676b;
+  }
+  .post-number {
+    margin-left: auto;
+    background: #e4e6eb;
+    color: #65676b;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 16px;
+  }
+  .card-body {
+    padding: 0 16px 12px;
+  }
+  .card-body p {
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .card-stats {
+    display: flex;
+    gap: 16px;
+    padding: 8px 16px;
+    border-top: 1px solid #e4e6eb;
+    font-size: 14px;
+    color: #65676b;
+  }
+  .stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stat-icon {
+    font-size: 16px;
+  }
+  .image-grid {
+    padding: 0;
+  }
+  .image-grid img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .image-grid img:hover {
+    opacity: 0.92;
+  }
+  .image-grid.multi {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+  .image-grid.multi img {
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+  .image-grid.single img {
+    max-height: 500px;
+    object-fit: contain;
+    background: #f0f2f5;
+  }
+  .lightbox {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .lightbox.active { display: flex; }
+  .lightbox img {
+    max-width: 95vw;
+    max-height: 95vh;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .back-top {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #1877f2;
+    color: #fff;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .back-top.visible { display: flex; }
+  @media (max-width: 480px) {
+    .container { padding: 8px; }
+    .card { border-radius: 8px; margin-bottom: 12px; }
+    .card-header { padding: 12px 12px 8px; }
+    .card-body { padding: 0 12px 8px; }
+    .card-stats { padding: 8px 12px; }
+  }
+
+  .group-nav {
+    position: sticky;
+    top: 53px;
+    z-index: 99;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    padding: 8px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .group-nav-inner {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 4px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .group-pill {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .group-pill:hover, .group-pill.active { background: #1877f2; color: #fff; }
+  .group-section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 0 12px;
+    border-bottom: 2px solid #1877f2;
+    margin-bottom: 16px;
+  }
+  .group-section-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #050505;
+  }
+  .group-section-header .group-meta {
+    font-size: 13px;
+    color: #65676b;
+  }
+  .group-section-header a {
+    margin-left: auto;
+    font-size: 13px;
+    color: #1877f2;
+    text-decoration: none;
+  }
+  .group-section-header a:hover { text-decoration: underline; }
+  .group-badge {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #1877f2;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 8px;
+  }
+  .post-link {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 6px 14px;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: 13px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .post-link:hover { background: #d0d2d6; }
+  .post-time a {
+    color: #65676b;
+    text-decoration: none;
+  }
+  .post-time a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <h1>FB 社團爬蟲報告 <span class="timestamp">2026/07/26 23:05</span></h1>
+    <span class="post-count">0 個社團 · 共 0 篇貼文</span>
+  </div>
+</div>
+
+<div class="group-nav">
+  <div class="group-nav-inner">
+      
+  </div>
+</div>
+
+<div class="container">
+
+
+
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt="放大圖片">
+</div>
+
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+
+<script>
+function openLightbox(src) {
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('active');
+}
+window.addEventListener('scroll', () => {
+  document.getElementById('backTop').classList.toggle('visible', window.scrollY > 400);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// Group nav active state
+var pills = document.querySelectorAll('.group-pill');
+var sections = document.querySelectorAll('.group-section');
+function updateActivePill() {
+  var scrollY = window.scrollY + 120;
+  var active = null;
+  sections.forEach(function(sec) {
+    if (sec.offsetTop <= scrollY) active = sec.id;
+  });
+  pills.forEach(function(pill) {
+    pill.classList.toggle('active', pill.getAttribute('href') === '#' + active);
+  });
+}
+window.addEventListener('scroll', updateActivePill);
+updateActivePill();
+</script>
+</body>
+</html>
